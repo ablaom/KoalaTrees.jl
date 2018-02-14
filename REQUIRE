@@ -1,1 +1,6 @@
 julia 0.6
+Koala
+DataTableaux
+DataFrames
+StatsBase
+UnicodePlots
