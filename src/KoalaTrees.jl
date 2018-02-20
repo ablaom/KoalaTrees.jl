@@ -1,4 +1,4 @@
-__precompile__()
+#__precompile__()
 module KoalaTrees
 
 export TreeRegressor
@@ -916,7 +916,7 @@ function Base.showall(stream::IO, mach::SupervisedMachine{RegressorNode , TreeRe
     end
     delete!(dict, :report)
     showall(stream, dict)
-    println(stream, "Model hyperparameters:")
+    println(stream, "\nModel detail:")
     showall(stream, mach.model)
     show(stream, plt)
 end
