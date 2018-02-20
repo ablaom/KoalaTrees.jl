@@ -295,9 +295,6 @@ function feature_importance_curve(popularity_given_feature, names)
     return x, y
 end
 
-get_metadata(model::TreeRegressor, X::AbstractDataFrame, y, rows, features) =
-    features
-
 get_scheme_X(model::TreeRegressor, X, train_rows, features) =
     FrameToTableauScheme(X[train_rows,features])
 
@@ -325,10 +322,10 @@ mutable struct Cache
     popularity::Vector{Float64} # representing popularity of each feature
 end
 
-function setup(rgs::TreeRegressor, X, y, metadata, parallel, verbosity)
+function setup(rgs::TreeRegressor, X, y, scheme_X, parallel, verbosity)
 
     n_patterns = length(y)
-    n_features = length(metadata)
+    n_features = size(X, 2) # = length(scheme_X.encoding.names)
     max_features = (rgs.max_features == 0 ? n_features : rgs.max_features)
     popularity = zeros(Float64, n_features)
     
@@ -907,7 +904,6 @@ function Base.showall(stream::IO, mach::SupervisedMachine{RegressorNode , TreeRe
     dict = params(mach)
     dict[:Xt] = string(typeof(mach.Xt), " of shape ", size(mach.Xt))
     dict[:yt] = string(typeof(mach.yt), " of shape ", size(mach.yt))
-    dict[:metadata] = string("Object of type $(typeof(mach.metadata))")
     delete!(dict, :cache)
     if isdefined(mach,:report) && :feature_importance_curve in keys(mach.report)
         features, importance = mach.report[:feature_importance_curve]
