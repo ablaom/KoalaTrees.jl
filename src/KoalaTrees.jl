@@ -901,16 +901,17 @@ end
 function Base.showall(stream::IO, mach::SupervisedMachine{RegressorNode , TreeRegressor})
     show(stream, mach)
     println(stream)
-    dict = params(mach)
-    dict[:Xt] = string(typeof(mach.Xt), " of shape ", size(mach.Xt))
-    dict[:yt] = string(typeof(mach.yt), " of shape ", size(mach.yt))
-    delete!(dict, :cache)
     if isdefined(mach,:report) && :feature_importance_curve in keys(mach.report)
         features, importance = mach.report[:feature_importance_curve]
         plt = UnicodePlots.barplot(features, importance,
               title="Feature importance at penalty=$(mach.model.penalty)")
     end
-    delete!(dict, :report)
+    dict = params(mach)
+    dict[:Xt] = string(typeof(mach.Xt), " of shape ", size(mach.Xt))
+    dict[:yt] = string(typeof(mach.yt), " of shape ", size(mach.yt))
+    delete!(dict, :cache)
+    report_items = sort(collect(keys(dict[:report])))
+    dict[:report] = "Dict with keys: $report_items"
     showall(stream, dict)
     println(stream, "\nModel detail:")
     showall(stream, mach.model)
