@@ -9,6 +9,8 @@ export TreeRegressor
 # export is_left, is_right
 # export unite!, child
 
+# needed for this module:
+import Koala
 import Koala: Regressor, SupervisedMachine
 import Koala: params, keys_ordered_by_values
 import DataTableaux
@@ -21,8 +23,8 @@ import UnicodePlots
 import Base: show, showall
 
 # to be extended (but not explicitly rexported):
-import Koala: get_scheme_X, get_scheme_y, transform, inverse_transform
-import Koala: setup, fit, predict
+import Koala: get_transformer_X, get_transformer_y, fit, transform, inverse_transform
+import Koala: setup, predict
 
 # constants:
 const Small = UInt8
@@ -295,19 +297,20 @@ function feature_importance_curve(popularity_given_feature, names)
     return x, y
 end
 
-get_scheme_X(model::TreeRegressor, X, train_rows, features) =
-    FrameToTableauScheme(X[train_rows,features])
-
-function transform(model::TreeRegressor, frame_to_tableau_scheme, X::AbstractDataFrame)
-    features = frame_to_tableau_scheme.encoding.names
+# transformer for learning algorithms requiring DataTableau inputs:
+struct TreeTransformer_X <: Koala.Transformer end
+fit(transformer::TreeTransformer_X, X::AbstractDataFrame, parallel, verbosity) =
+    FrameToTableauScheme(X)
+function transform(transformer::TreeTransformer_X, scheme, X) 
+    features = scheme.encoding.names
     issubset(Set(features), Set(names(X))) ||
-        error("DataFrame feature incompatibility encountered.")
-    return DataTableaux.transform(frame_to_tableau_scheme, X[features])
+        error("Attempting to transform DataFrame with incompatible feature labels.")
+    return DataTableaux.transform(scheme, X[features])
 end
 
-get_scheme_y(model::TreeRegressor, y, train_rows) = nothing
-transform(model::TreeRegressor, no_thing::Void, y::AbstractVector{T} where T<:Real) = y
-inverse_transform(model::TreeRegressor, no_thing::Void, yt) = yt
+get_transformer_X(model::TreeRegressor) = TreeTransformer_X()
+get_transformer_y(model::TreeRegressor) = Koala.IdentityTransformer()
+
 
 #####################################################################
 # For readability we use `X` and `y` for `Xt` and `yt` from now on. #
@@ -915,7 +918,9 @@ function Base.showall(stream::IO, mach::SupervisedMachine{RegressorNode , TreeRe
     showall(stream, dict)
     println(stream, "\nModel detail:")
     showall(stream, mach.model)
-    show(stream, plt)
+    if isdefined(mach,:report) && :feature_importance_curve in keys(mach.report)
+        show(stream, plt)
+    end
 end
 
 

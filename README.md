@@ -13,16 +13,20 @@ Load some data and rows for the train/test sets:
     julia> X, y = load_ames()
     julia> train, test = splitrows(eachindex(y), 0.8); # 80:20 split
 ````
-This data consists of a mix of numerical and categorical features. By convention, any column of `X` whose eltype is a subtype of `Real` is treated as numerical; any column of eltype `Char` or `AbstractString` is treated categorical. Any other type will throw an exception.
+
+This data consists of a mix of numerical and categorical features. By
+convention, any column of `X` whose eltype is a subtype of `Real` is
+treated as numerical; any column of eltype `Char` or `AbstractString`
+is treated categorical. Any other type will throw an exception.
 
 Let us instantiate a tree model:
 
 ````julia
     julia> using KoalaTrees
-    julia> t = TreeRegressor(regularization=0.5)
+    julia> tree = TreeRegressor(regularization=0.5)
     TreeRegressor@...095
 
-    julia> showall(t)
+    julia> showall(tree)
     TreeRegressor@...095
 
     key                     | value
@@ -35,18 +39,23 @@ Let us instantiate a tree model:
     regularization          |0.5
 ````
 
-Here `max_features=0` means that all features are considered in computing splits at a node. We reset this as follows:
+Here `max_features=0` means that all features are considered in
+computing splits at a node. We reset this as follows:
 
 ````julia
-    t.max_features = 3
+    tree.max_features = 3
 ````
 
-Now we build and train a machine:
+Now we build and train a machine. The machine essentially wraps the
+model `tree` in the learning data supplied to the `Machine` constructor,
+transformed into a form appropriate for our tree building algorithm
+(but using only the `train` rows to calculate the transformation
+parameters):
     
 ````julia
-    julia> tree = SupervisedMachine(t, X, y, train)
-    julia> fit!(tree, train)
-    julia> showall(tree)
+    julia> treeM = Machine(tree, X, y, train)
+    julia> fit!(treeM, train)
+    julia> showall(treeM)
     
     SupervisedMachine{TreeRegressor@...095}@...548
 
@@ -93,7 +102,7 @@ Now we build and train a machine:
 Compute the RMS error on the test set:
     
 ````julia
-    julia> err(tree, test)
+    julia> err(treeM, test)
     42581.70098526429
 ````
 
@@ -102,16 +111,16 @@ Tune the regularization parameter:
 ````julia
     julia> u, v = @curve r logspace(-3,2,100) begin
            t.regularization = r
-           fit!(tree, train)
-           err(tree, test)
+           fit!(treeM, train)
+           err(treeM, test)
        end
     julia> t.regularization = u[indmin(v)]
     0.8497534359086443
 
-    julia> fit!(tree, train)
+    julia> fit!(treeM, train)
     SupervisedMachine{TreeRegressor@...095}@...548
 
-    julia> err(tree, test)
+    julia> err(treeM, test)
     39313.459637964435
 ````
 
