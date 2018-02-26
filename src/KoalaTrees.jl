@@ -23,7 +23,7 @@ import UnicodePlots
 import Base: show, showall
 
 # to be extended (but not explicitly rexported):
-import Koala: get_transformer_X, get_transformer_y, fit, transform, inverse_transform
+import Koala: default_transformer_X, default_transformer_y, fit, transform, inverse_transform
 import Koala: setup, predict
 
 # constants:
@@ -308,8 +308,8 @@ function transform(transformer::TreeTransformer_X, scheme, X)
     return DataTableaux.transform(scheme, X[features])
 end
 
-get_transformer_X(model::TreeRegressor) = TreeTransformer_X()
-get_transformer_y(model::TreeRegressor) = Koala.IdentityTransformer()
+default_transformer_X(model::TreeRegressor) = TreeTransformer_X()
+default_transformer_y(model::TreeRegressor) = Koala.IdentityTransformer()
 
 
 #####################################################################
