@@ -331,6 +331,8 @@ function setup(rgs::TreeRegressor, X, y, scheme_X, parallel, verbosity)
 
     n_patterns = length(y)
     n_features = size(X, 2) # = length(scheme_X.encoding.names)
+
+    # The following will have to be reset in `fit`:
     max_features = (rgs.max_features == 0 ? n_features : rgs.max_features)
     popularity = zeros(Float64, n_features)
     
@@ -802,11 +804,12 @@ end
 
 function fit(rgs::TreeRegressor, cache, add, parallel, verbosity) 
 
-    # add, parallel are ignored in this method
+    # Note: add, parallel are ignored in this method
 
-    n_patterns, n_features = cache.n_patterns, cache.n_features    
-    max_features = cache.max_features
-
+    n_patterns, n_features = cache.n_patterns, cache.n_features  
+    cache.max_features = (rgs.max_features == 0 ? n_features : rgs.max_features)
+    cache.popularity = zeros(Float64, n_features)
+    
     # Create a root node to get started. Its unique child is the true
     # stump of the decision tree:
     root = RegressorNode(NodeData(0, 0, 0.0)) 
