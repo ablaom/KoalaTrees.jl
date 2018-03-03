@@ -1,8 +1,6 @@
-# ![logo](logo.png) KoalaTrees
+# KoalaTrees ![logo](logo.png) 
 
 > *Decision tree machine learning algorithms for use with Koala*
-
-## `TreeRegressor <: Regressor`
 
 ### Basic usage
 
@@ -11,7 +9,7 @@ Load some data and rows for the train/test sets:
 ````julia
     julia> using Koala
     julia> X, y = load_ames()
-    julia> train, test = splitrows(eachindex(y), 0.8); # 80:20 split
+    julia> train, test = split(eachindex(y), 0.8); # 80:20 split
 ````
 
 This data consists of a mix of numerical and categorical features. By
@@ -132,9 +130,13 @@ Tune the regularization parameter:
                                   
 - `min_patterns_split=2`: Minimum number of patterns at node to consider split (integer). 
 
-- `penalty=0` (range, [0,1]): Float between 0 and 1. The gain afforded by new features
-      is penalized by mulitplying by the factor `1 - penalty` before being
-      compared with the gain afforded by previously selected features.
+- `penalty=0` (range, [0,1]): Float between 0 and 1. The gain afforded
+      by new features is penalized by mulitplying by the factor `1 -
+      penalty` before being compared with the gain afforded by
+      previously selected features. Useful for feature selection, as
+      introduced in "Feature Selection via Regularized Trees", H. Deng
+      and G Runger, *International Joint Conference on Neural Networks
+      (IJCNN)*, IEEE, 2012.
 
 - `extreme=false`: If true then the split of each feature considered is uniformly random rather than optimal. 
                             
