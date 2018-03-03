@@ -138,13 +138,16 @@ Tune the regularization parameter:
       and G Runger, *International Joint Conference on Neural Networks
       (IJCNN)*, IEEE, 2012.
 
-- `extreme=false`: If true then the split of each feature considered is uniformly random rather than optimal. 
+- `extreme=false`: If true then the split of each feature considered
+  is uniformly random rather than optimal. Mainly used to build
+  extreme random forests using KoalaEnsembles.
                             
 - `regularization=0.0` (range, [0,1)): regularization in which predictions 
     are a weighted sum of predictions at the leaf and its "nearest" neighbours. For details, sqee this [post](https://ablaom.github.io/regression/2017/10/17/nearest-neighbor-regularization-for-decision-trees.html).
     
-- `max_height=1000` (range, [0, Inf])
-     as defined by the pattern. Roughly, how high the predictors looks for "nearby" leaves in regularized predictions.q
+- `max_height=1000` (range, [0, Inf]) as defined by the
+     pattern. Roughly, how high the predictors looks for "nearby"
+     leaves in regularized predictions.
 
 
 
