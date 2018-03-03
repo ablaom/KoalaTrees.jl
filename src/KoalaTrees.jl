@@ -310,12 +310,8 @@ function transform(transformer::TreeTransformer_X, scheme, X)
 end
 
 default_transformer_X(model::TreeRegressor) = TreeTransformer_X()
-<<<<<<< HEAD
 default_transformer_y(model::TreeRegressor) =
     KoalaTransforms.RegressionTargetTransformer(standardize=false)
-=======
-default_transformer_y(model::TreeRegressor) = Koala.IdentityTransformer()
->>>>>>> d3c463fb9147129f75fbaaca122c1de032fd87e4
 
 
 #####################################################################
