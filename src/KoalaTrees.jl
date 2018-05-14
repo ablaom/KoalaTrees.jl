@@ -912,13 +912,13 @@ function Base.showall(stream::IO, mach::SupervisedMachine{RegressorNode , TreeRe
         plt = UnicodePlots.barplot(features, importance,
               title="Feature importance at penalty=$(mach.model.penalty)")
     end
-    dic = params(mach)
-    dic[:Xt] = string(typeof(mach.Xt), " of shape ", size(mach.Xt))
-    dic[:yt] = string(typeof(mach.yt), " of shape ", size(mach.yt))
-    delete!(dic, :cache)
-    report_items = sort(collect(keys(dic[:report])))
-    dic[:report] = "Dict with keys: $report_items"
-    showall(stream, mach, dic=dic)
+    dict = params(mach)
+    dict[:Xt] = string(typeof(mach.Xt), " of shape ", size(mach.Xt))
+    dict[:yt] = string(typeof(mach.yt), " of shape ", size(mach.yt))
+    delete!(dict, :cache)
+    report_items = sort(collect(keys(dict[:report])))
+    dict[:report] = "Dict with keys: $report_items"
+    showall(stream, mach, dict=dict)
     println(stream, "\nModel detail:")
     showall(stream, mach.model)
     if isdefined(mach,:report) && :feature_importance_curve in keys(mach.report)
