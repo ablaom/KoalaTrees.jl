@@ -14,8 +14,8 @@ Load some data and rows for the train/test sets:
 
 This data consists of a mix of numerical and categorical features. By
 convention, any column of `X` whose eltype is a subtype of `Real` is
-treated as numerical; any column of eltype `Char` or `AbstractString`
-is treated categorical. Any other type will throw an exception.
+treated as numerical; all other eltypes are treated categorical
+(including columns with missing data, which have `Union` eltypes).
 
 Let us instantiate a tree model:
 

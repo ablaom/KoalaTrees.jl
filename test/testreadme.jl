@@ -1,7 +1,7 @@
 # Load some data and rows for the train/test sets:
 using Koala
 X, y = load_ames();
-const train, test = splitrows(eachindex(y), 0.8); # 80:20 split
+const train, test = split(eachindex(y), 0.8); # 80:20 split
 
 # Instantiate a tree model:
 using KoalaTrees
@@ -9,7 +9,7 @@ t = TreeRegressor(regularization=0.5)
 showall(t)
 
 # Build and train a machine:
-tree = SupervisedMachine(t, X, y, train)
+tree = Machine(t, X, y, train)
 fit!(tree, train)
 showall(tree)
 
