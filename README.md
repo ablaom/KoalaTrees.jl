@@ -147,11 +147,16 @@ Tune the regularization parameter:
     "nearest" neighbours. For details, see this
     [post](https://ablaom.github.io/regression/2017/10/17/nearest-neighbor-regularization-for-decision-trees.html).
     
-- `max_height=1000` (range, [0, Inf]) as defined by the
-     pattern. Roughly, how high the predictors looks for "nearby"
-     leaves in regularized predictions.
+- `max_height=1000` (range, [0, Inf]): how high predictors look for "nearby" leaves in
+     regularized predictions.
 
-
+- `max_bin=0` (range, any non-negative integer except one, but
+  effectively is rounded down to a power of 2): number of bins in
+  histogram based-splitting (active if `max_bin` is non-zero). 
+  
+- `bin_factor=90` (range, [1, ∞)): when the number of patterns at a
+  node falls below `bin_factor*max_bin` then exact splitting replaces
+  histogram splitting.
 
 
 
