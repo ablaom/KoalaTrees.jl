@@ -4,14 +4,14 @@ module KoalaTrees
 export TreeRegressor
 
 # development only:
-# import ADBUtilities: @dbg, @colon
+# import Koala: @dbg, @colon
 # export Node, is_stump, is_leaf, has_left, has_right, make_leftchild!, make_rightchild!
 # export is_left, is_right
 # export unite!, child
 
 # needed for this module:
 import Koala
-import Koala: Regressor, SupervisedMachine
+import Koala: Regressor, SupervisedMachine, softwarn, clean!
 import Koala: params, keys_ordered_by_values
 import DataTableaux
 import DataTableaux:  DataTableau, FrameToTableauScheme, IntegerSet
@@ -31,7 +31,8 @@ import Koala: setup, predict
 const Small = UInt8
 
 
-## Helpers:
+## HELPERS:
+
 """
 # `function mean_and_ss_after_add(mean, ss, n, x)`
 
@@ -41,7 +42,7 @@ Returns the mean, and the sum-of-square deviations from the mean, of
 number, `x`.
 """
 function mean_and_ss_after_add(mean, ss, n, x)
-    n<0 ? throw(DomainError) : nothing
+    n >= 0 || throw(DomainError)
     mean_new = (n*mean + x)/(n + 1)
     ss_new = ss + (x - mean_new)*(x - mean)
     return mean_new, ss_new
@@ -57,10 +58,79 @@ sum-of-square deviations of the same numbers when one of the numbers,
 
 """
 function mean_and_ss_after_omit(mean, ss, n, x)
-    n <= 1 ? throw(DomainError) : nothing
+    n > 1 || throw(DomainError)
     mean_new = (n*mean - x)/(n-1)
     ss_new = ss - (x - mean)*(x - mean_new)
     return mean_new, ss_new
+end
+
+"""
+    histogram(bag, x, log2_nbins)
+
+Assumes bag is an `AbstractVector` of integers such that `x[i]` is
+`Real` for all `i` in `bag`, and sorts `bag` into `n` subvectors
+`bin[1], bin[2], ..., bin[n]` based on the values of `x`, using a
+uniform subdivision of the interval `(minimum(x[bag]),
+maximum(x[bag])` (whose boundaries are placed in a vector called
+`boundaries` below). Here `n=2^log2_nbins`. The bins are
+"left-closed", except the last which is closed at both ends.
+
+### Return value
+
+The normal return value is
+
+`(bins, boundaries)`
+
+where `bins = [bin[k] for k in 1:n]`. However, in the special case
+that `x[bag]` takes on a *single* value `x0`, `bins` is an unassigned
+vector of length one, and boundaries is replaced with `[x0]`.
+
+, [x0]`. 
+
+"""
+function histogram(bag::AbstractVector{Int},
+                   x::AbstractVector{T} where T<:Real,
+                   log2_nbins)
+    nbins = 2^log2_nbins
+    nbins > 1 || throw(DomainError)
+    boundaries = linspace(minimum(x[bag]), maximum(x[bag]), nbins + 1) |> collect
+
+    if boundaries[1] == boundaries[end]
+        nbins = 1
+    end
+    
+    # create bins
+    bin = Vector{Vector{Int}}(nbins)
+
+    # return unassigned bins if x takes constant value:
+    if nbins == 1
+        return bin, boundaries[1:1]
+    end
+
+    # initialize bins as empty:
+    for k in 1:nbins
+        bin[k] = Int[]
+    end
+
+    # For each `i` in `bag` we add `i` to vector `bin[k]` if `x[i]`
+    # is between `boundaries[k]` and `boundaries[k+1]` (left included,
+    # right excluded unless `k=n_bins`). We sort using binary
+    # search. In particular, the bin number `k` is represented as a
+    # sum powers of 2 in the inner loop below.
+
+    for i in bag
+        k = 1 # initialize bin number
+        for power in reverse(0:(log2_nbins - 1))
+            δk = 2^power
+            if x[i] >= boundaries[k + δk]
+                k += δk
+            end
+        end
+        push!(bin[k], i)
+    end
+
+    return bin, boundaries
+
 end
 
 
@@ -256,30 +326,43 @@ function should_split_left(pattern, node::RegressorNode)
 end
 
 mutable struct TreeRegressor <: Regressor{RegressorNode}
-    
     max_features::Int
     min_patterns_split::Int
     penalty::Float64
     extreme::Bool
     regularization::Float64
-    max_height::Int 
-
-    function TreeRegressor(max_features::Int, min_patterns_split::Int,
-                           penalty::Float64, extreme::Bool, regularization,
-                           max_height)
-        min_patterns_split > 1 || error("min_patterns_split must be at least 2.")
-        return new(max_features, min_patterns_split, penalty,
-                   extreme, regularization, max_height)
-
-    end
-
+    max_height::Int
+    max_bin::Int
+    bin_factor::Int
 end
 
-TreeRegressor(;max_features::Int=0, min_patterns_split::Int=2,
-              penalty=0.0, extreme::Bool=false,
-              regularization=0.0, max_height=1000) =
-                  TreeRegressor(max_features, min_patterns_split, penalty,
-                                extreme, regularization, max_height)
+function clean!(model::TreeRegressor)
+    messg = ""
+    if model.min_patterns_split <= 1
+        model.min_patterns_split = 2
+        messg = messg * "`min_patterns_split` must be at least 2. Resetting to 2. "
+    end
+    if model.regularization >= 1.0
+        model.regularization = 0.0
+        messg = messg * "`regularization` must be less than 1. Resetting to 0. "
+    end
+    if model.max_bin == 1
+        model.max_bin = 2
+        messg = messg * "`max_bin` must be 0 (exact splits) " *
+              "or more than 1. Resetting to 2. "
+    end
+    return messg
+end
+
+function TreeRegressor(;max_features=0, min_patterns_split=2,
+                       penalty=0.0, extreme=false,
+                       regularization=0.0, max_height=1000, max_bin=0, bin_factor=90)
+    model = TreeRegressor(max_features, min_patterns_split,
+                          penalty,extreme,
+                          regularization, max_height, max_bin, bin_factor)
+    softwarn(clean!(model)) # only issues warning if `clean!` changes `model`
+    return model
+end
 
 function feature_importance_curve(popularity_given_feature, names)
 
@@ -319,24 +402,28 @@ default_transformer_y(model::TreeRegressor) =
 #####################################################################
 
 mutable struct Cache
+    
+    # independent of model parameters:
     X::DataTableau
     y::Vector{Float64}
     n_patterns::Int
     n_features::Int
+
+    # dependent on model parameters:
     max_features::Int
+    log2_max_bin::Int 
+    max_bin::Int # true value to be used (a power of 2)
     popularity::Vector{Float64} # representing popularity of each feature
+
+    Cache(X, y, n_patterns, n_features) = new(X, y, n_patterns, n_features)
 end
 
 function setup(rgs::TreeRegressor, X, y, scheme_X, parallel, verbosity)
 
-    n_patterns = length(y)
     n_features = size(X, 2) # = length(scheme_X.encoding.names)
-
-    # The following will have to be reset in `fit`:
-    max_features = (rgs.max_features == 0 ? n_features : rgs.max_features)
-    popularity = zeros(Float64, n_features)
+    n_patterns = length(y)
     
-    return Cache(X, y, n_patterns, n_features, max_features, popularity)
+    return Cache(X, y, n_patterns, n_features)
 
 end
 
@@ -517,19 +604,16 @@ considered.
 
 """
 function split_on_ordinal(rgs, j, bag, no_split_error, cache)
-
-    # 1. Determine a Vector{Float64} of values taken by cache.X[j], called `vals` below:
-    vals = unique(cache.X.raw[bag,j])
-    sort!(vals)
-    n_vals = length(vals)
-    if n_vals == 1     # feature is constant for data in bag
-        return 0.0, 0.0        # so no point in splitting; second
-        # value irrelevant
-    end
     
     if rgs.extreme
+        # determine a Vector{Float64} of values taken by cache.X[j], called `vals` below:
+        vals = unique(cache.X.raw[bag,j])
         min_val = minimum(vals)
         max_val = maximum(vals)
+        if min_val == max_val      # feature is constant for data in bag
+            return 0.0, 0.0        # so no point in splitting; second
+            # value irrelevant
+        end
         threshold = min_val + rand()*(max_val - min_val)
         
         # Calculate the left and right mean values of target
@@ -566,76 +650,155 @@ function split_on_ordinal(rgs, j, bag, no_split_error, cache)
         return  gain, threshold
     end
     
-    # Non-extreme case:            
-    
-    # 2. Let the "jth split" correspond to threshold = vals[j], (so
-    # that the last split is no split). The error for the jth split
-    # will be error[j]. We calculate these errors now:
-    
-    
-    # println("len = $(length(vals))")
-    
-    # we do the first split outside of the loop that considering the
-    # others because we will use recursive formulas to update
-    # means and sum-of-square deviations (for speed enhancement)
-    
-    # mean and ss (sum-of-square deviations) for first split:
-    left_mean = 0.0 
-    left_count = 0  
-    right_mean = 0.0 
-    right_count = 0  
-    for i in bag
-        if cache.X.raw[i,j] <= vals[1]
-            left_mean += cache.y[i]
-            left_count += 1
-        else
-            right_mean += cache.y[i]
-            right_count += 1
-        end
-    end
-    left_mean = left_mean/left_count
-    right_mean = right_mean/right_count
-    left_ss = 0.0
-    right_ss = 0.0
-    for i in bag
-        if cache.X.raw[i,j] == vals[1]
-            left_ss += (cache.y[i] - left_mean)^2
-        else
-            right_ss += (cache.y[i] - right_mean)^2
-        end
-    end
-    
-    # error for first split:
-    error = left_ss + right_ss
-    position = 1 # its position, to be updated if better split found
-    
-    for k in 2:(n_vals - 1)
+    # Non-extreme case:
+
+    nbins = cache.max_bin
+
+    if nbins > 0 && length(bag) > rgs.bin_factor*nbins
+
+        # Use histogram splitting.
+
+        # calcluate the histogram:
         
-        # Update the means and sum-of-square deviations:
-        for i in bag
-            x = cache.X.raw[i,j]
-            if x == vals[k] # (x > vals[k-1]) && (x <vals[k])
-                left_mean, left_ss = mean_and_ss_after_add(left_mean, left_ss, left_count, cache.y[i])
+        bins, boundaries = histogram(bag, view(cache.X.raw, :, j), cache.log2_max_bin)
+
+        # deal with special case that feature takes on constant value:
+        if length(boundaries) == 1
+            return 0.0, 0.0 # no point in splitting
+        end
+        
+        # We consider splits at each boundary point except the first
+        # and last. We do the first split by hand and use recursive
+        # formulas to update means and sum-of-square deviations for
+        # the others (for speed enhancement)
+        
+        # mean and ss (sum-of-square deviations) for first split (k = 1):
+        left_targets = cache.y[bins[1]]
+        left_mean = mean(left_targets)
+        left_count = length(left_targets)
+        left_ss = sum((η - left_mean)^2 for η in left_targets)
+        right_targets = cache.y[vcat((bins[k] for k in 2:nbins)...)]
+        right_mean = mean(right_targets)
+        right_count = length(right_targets)
+        right_ss = sum((η - right_mean)^2 for η in right_targets)
+        
+        # error for first split:
+        error = left_ss + right_ss
+        best_k = 1 # to be updated if better split found
+        
+        for k in 2:(nbins - 1)
+
+            # update the means and ss values recursively:
+            for i in bins[k]
+                left_mean, left_ss =
+                    mean_and_ss_after_add(left_mean, left_ss, left_count, cache.y[i])
                 left_count += 1
-                right_mean, right_ss = mean_and_ss_after_omit(right_mean, right_ss, right_count, cache.y[i])
+                right_mean, right_ss =
+                    mean_and_ss_after_omit(right_mean, right_ss, right_count, cache.y[i])
                 right_count += -1
+            end
+
+            # Calcluate the kth split error:
+            err = left_ss + right_ss
+            
+            # Note value and split position if there is improvement
+            if err < error
+                error = err
+                best_k = k 
             end
         end
         
-        # Calcluate the kth split error:
-        err = left_ss + right_ss
+        gain = no_split_error - error
+        threshold = boundaries[best_k + 1]
+
+        return gain, threshold
         
-        # Note value and split position if there is improvement
-        if err < error
-            error = err
-            position = k
+    else
+        
+        # Use exact splitting.
+        
+        # 1. Determine a Vector{Float64} of values taken by cache.X[j],
+        # called `vals` below:
+        vals = unique(cache.X.raw[bag,j])
+        n_vals = length(vals)
+        if n_vals == 1             # feature is constant for data in bag
+            return 0.0, 0.0        # so no point in splitting; second
+                                   # value irrelevant
         end
+        sort!(vals)
+        
+        # 2. Let the "jth split" correspond to threshold = vals[j], (so
+        # that the last split is no split). The error for the jth split
+        # will be error[j]. We calculate these errors now:
+        
+        
+        # println("len = $(length(vals))")
+        
+        # we do the first split outside of the loop that considering the
+        # others because we will use recursive formulas to update
+        # means and sum-of-square deviations (for speed enhancement)
+        
+        # mean and ss (sum-of-square deviations) for first split:
+        left_mean = 0.0 
+        left_count = 0  
+        right_mean = 0.0 
+        right_count = 0  
+        for i in bag
+            if cache.X.raw[i,j] == vals[1]
+                left_mean += cache.y[i]
+                left_count += 1
+            else
+                right_mean += cache.y[i]
+                right_count += 1
+            end
+        end
+        left_mean = left_mean/left_count
+        right_mean = right_mean/right_count
+        left_ss = 0.0
+        right_ss = 0.0
+        for i in bag
+            if cache.X.raw[i,j] == vals[1]
+                left_ss += (cache.y[i] - left_mean)^2
+            else
+                right_ss += (cache.y[i] - right_mean)^2
+            end
+        end
+        
+        # error for first split:
+        error = left_ss + right_ss
+        position = 1 # its position, to be updated if better split found
+        
+        for k in 2:(n_vals - 1)
+            
+            # Update the means and sum-of-square deviations:
+            for i in bag # Todo: really need to go through entire bag every time?
+                x = cache.X.raw[i,j]
+                if x == vals[k] # (ie, x > vals[k-1]) && (x < vals[k])
+                    left_mean, left_ss =
+                        mean_and_ss_after_add(left_mean, left_ss, left_count, cache.y[i])
+                    left_count += 1
+                    right_mean, right_ss =
+                        mean_and_ss_after_omit(right_mean, right_ss, right_count, cache.y[i])
+                    right_count += -1
+                end
+            end
+            
+            # Calcluate the kth split error:
+            err = left_ss + right_ss
+            
+            # Note value and split position if there is improvement
+            if err < error
+                error = err
+                position = k
+            end
+        end
+    
+        gain = no_split_error - error
+        
+        threshold = 0.5*(vals[position] + vals[position + 1])
+        return gain, threshold
+
     end
-    
-    gain = no_split_error - error
-    
-    threshold = 0.5*(vals[position] + vals[position + 1])
-    return gain, threshold
     
 end # of function `split_on_ordinal` 
 
@@ -806,9 +969,10 @@ function fit(rgs::TreeRegressor, cache, add, parallel, verbosity)
 
     # Note: add, parallel are ignored in this method
 
-    n_patterns, n_features = cache.n_patterns, cache.n_features  
-    cache.max_features = (rgs.max_features == 0 ? n_features : rgs.max_features)
-    cache.popularity = zeros(Float64, n_features)
+    cache.max_features = (rgs.max_features == 0 ? cache.n_features : rgs.max_features)
+    cache.log2_max_bin = rgs.max_bin != 0 ? round(Int, floor(log2(rgs.max_bin))) : 0
+    cache.max_bin = rgs.max_bin !=0 ? 2^cache.log2_max_bin : 0
+    cache.popularity = zeros(Float64, cache.n_features)
     
     # Create a root node to get started. Its unique child is the true
     # stump of the decision tree:
@@ -816,14 +980,14 @@ function fit(rgs::TreeRegressor, cache, add, parallel, verbosity)
 
     F = Set{Int}() # set of feature indices not penalized (initially empty)
     
-    grow(rgs, 1:n_patterns, F, root, 0, cache) # 0 means `root` is to
+    grow(rgs, 1:cache.n_patterns, F, root, 0, cache) # 0 means `root` is to
                                               # be androgynous,
                                               # meaning `root.left =
                                               # root.right`.
 
     report = Dict{ Symbol, Tuple{Vector{Symbol},Vector{Float64}} }()
     popularity_given_feature = Dict{Int,Int}()
-    for j in 1:n_features
+    for j in 1:cache.n_features
         pop = cache.popularity[j]
         if pop != 0.0
             popularity_given_feature[j] = pop
