@@ -1,6 +1,8 @@
 # KoalaTrees ![logo](logo.png) 
 
-> *Decision tree machine learning algorithms for use with Koala*
+Decision tree machine learning algorithms for use with the
+[Koala](https://github.com/ablaom/Koala.jl) machine learning
+environment.
 
 ### Basic usage
 
@@ -131,7 +133,7 @@ Tune the regularization parameter:
 - `min_patterns_split=2`: Minimum number of patterns at node to consider split (integer). 
 
 - `penalty=0` (range, [0,1]): Float between 0 and 1. The gain afforded
-      by new features is penalized by mulitplying by the factor `1 -
+      by new features is penalized by multiplying by the factor `1 -
       penalty` before being compared with the gain afforded by
       previously selected features. Useful for feature selection, as
       introduced in "Feature Selection via Regularized Trees", H. Deng
@@ -144,7 +146,7 @@ Tune the regularization parameter:
                             
 - `regularization=0.0` (range, [0,1)): regularization in which
     predictions are a weighted sum of predictions at the leaf and its
-    "nearest" neighbours. For details, see this
+    "nearest" neighbors. For details, see this
     [post](https://ablaom.github.io/regression/2017/10/17/nearest-neighbor-regularization-for-decision-trees.html).
     
 - `max_height=1000` (range, [0, Inf]): how high predictors look for "nearby" leaves in
