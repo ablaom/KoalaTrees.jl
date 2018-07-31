@@ -1,3 +1,4 @@
+
 # KoalaTrees ![logo](logo.png) 
 
 Decision tree machine learning algorithms for use with the
@@ -15,9 +16,10 @@ Load some data and rows for the train/test sets:
 ````
 
 This data consists of a mix of numerical and categorical features. By
-convention, any column of `X` whose eltype is a subtype of `Real` is
-treated as numerical; all other eltypes are treated categorical
-(including columns with missing data, which have `Union` eltypes).
+convention, any column of `X` whose eltype is a subtype of
+`AbstractFloat` is treated as numerical; all other columns are treated
+categorical (including integer columns, and with missing data, which
+have `Union` eltypes).
 
 Let us instantiate a tree model:
 
