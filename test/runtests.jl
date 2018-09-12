@@ -1,5 +1,5 @@
 using Koala
-using Revise
+# using Revise
 using KoalaTrees
 using Test
 
@@ -8,6 +8,7 @@ const X, y = load_ames();
 t = KoalaTrees.FrameToTableauTransformer()
 tM = Machine(t, X)
 dt = transform(tM, X)
+@test dt[1:2,:].raw == dt.raw[1:2,:] # test the getindex method needed
 
 # test the histogram maker:
 @test KoalaTrees.histogram(21:41, 11:1000, 3)[1] == 
@@ -34,7 +35,7 @@ const rgs = TreeRegressor(penalty=0.5)
 
 const mach = Machine(rgs, X, y, train, features=names(X)[1:end-1])
 fit!(mach, train)
-showall(mach)
+show(mach, 2)
 score = err(mach, test)
 println("error = $score")
 @test score > 4e4 && score < 5e4

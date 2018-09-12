@@ -13,7 +13,7 @@ import KoalaTransforms: ToIntTransformer, ToIntScheme, RegressionTargetTransform
 using Statistics
 
 # to be extended:
-import Base: show, round, isempty, size, in, push!, Float64
+import Base: show, round, isempty, size, in, push!, Float64, getindex
 
 # to be extended but not explicitly rexported:
 import Koala: default_transformer_X, default_transformer_y
@@ -273,10 +273,10 @@ function Base.show(stream::IO, ::MIME"text/plain", node::Node)
     gap = spaces(node.depth + 1)
     println(stream, string(get_gender(node), gap, node.data))
     if has_left(node)
-        showall(stream, node.left)
+        show(stream, MIME("text/plain"), node.left)
     end
     if has_right(node)
-        showall(stream, node.right)
+        show(stream, MIME("text/plain"), node.right)
     end
     return
 end
@@ -969,7 +969,7 @@ function fit(rgs::TreeRegressor, cache, add, parallel, verbosity)
                                               # meaning `root.left =
                                               # root.right`.
 
-    report = Dict{ Symbol, Tuple{Vector{Symbol},Vector{Float64}} }()
+    report = Dict{Symbol, Any}()
     popularity_given_feature = Dict{Int,Int}()
     for j in 1:cache.n_features
         pop = cache.popularity[j]
@@ -977,8 +977,14 @@ function fit(rgs::TreeRegressor, cache, add, parallel, verbosity)
             popularity_given_feature[j] = pop
         end
     end
-    report[:feature_importance_curve] =
-            feature_importance_curve(popularity_given_feature, cache.X.features)
+
+    features, importance = feature_importance_curve(popularity_given_feature,
+                             cache.X.features)
+    report[:feature_importance_curve] = (features, importance)        
+    title="Feature importance at penalty=$(rgs.penalty)"
+    plt =  UnicodePlots.barplot(features, importance, title=title)
+    report[:feature_importance_plot] = plt
+
     predictor = root.left
 
     return predictor, report, cache
@@ -1051,28 +1057,5 @@ function predict(rgs::TreeRegressor, predictor, X::DataTableau, parallel, verbos
     end    
 
 end
-
-## Displaying machines with `TreeRegressor` models
-
-function Base.showall(stream::IO, mach::SupervisedMachine{RegressorNode , TreeRegressor})
-    if isdefined(mach,:report) && :feature_importance_curve in keys(mach.report)
-        features, importance = mach.report[:feature_importance_curve]
-        plt = UnicodePlots.barplot(features, importance,
-              title="Feature importance at penalty=$(mach.model.penalty)")
-    end
-    dict = params(mach)
-    dict[:Xt] = string(typeof(mach.Xt), " of shape ", size(mach.Xt))
-    dict[:yt] = string(typeof(mach.yt), " of shape ", size(mach.yt))
-    delete!(dict, :cache)
-    report_items = sort(collect(keys(dict[:report])))
-    dict[:report] = "Dict with keys: $report_items"
-    showall(stream, mach, dict=dict)
-    println(stream, "\nModel detail:")
-    showall(stream, mach.model)
-    if isdefined(mach,:report) && :feature_importance_curve in keys(mach.report)
-        show(stream, plt)
-    end
-end
-
 
 end # module

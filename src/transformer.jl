@@ -197,6 +197,17 @@ function size(dt::DataTableau, i::Integer)
     end
 end
 
+function Base.getindex(dt::DataTableau, a::AbstractVector{Int}, c::Colon)
+    raw = dt.raw[a,:]
+    features = dt.features
+    nrows = length(a)
+    ncols = dt.ncols
+    is_ordinal = dt.is_ordinal
+    return DataTableau(raw, is_ordinal, features, nrows, ncols)
+end
+
+# unlike a DataFrame, the following spits out a raw row:
+Base.getindex(dt::DataTableau, i, c::Colon) = dt.raw[i,:]
 
 
 
