@@ -3,6 +3,12 @@ using Revise
 using KoalaTrees
 using Base.Test
 
+# test the contents of transformer.jl:
+const X, y = load_ames();
+t = KoalaTrees.FrameToTableauTransformer()
+tM = Machine(t, X)
+dt = transform(tM, X)
+
 # test the histogram maker:
 @test KoalaTrees.histogram(21:41, 11:1000, 3)[1] == 
 [[21, 22, 23],
@@ -19,11 +25,10 @@ TreeRegressor(regularization=1.0)
 TreeRegressor(min_patterns_split=1)
 TreeRegressor(max_bin=1)
 
-const X, y = load_ames();
 
 const all = eachindex(y) # iterator for all rows
 
-const train, test = split(all, 0.8); # 80:20 split
+const train, test = partition(all, 0.8); # 80:20 split
 
 const rgs = TreeRegressor(penalty=0.5)
 

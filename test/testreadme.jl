@@ -1,7 +1,7 @@
 # Load some data and rows for the train/test sets:
 using Koala
 X, y = load_ames();
-const train, test = split(eachindex(y), 0.8); # 80:20 split
+const train, test = partition(eachindex(y), 0.8); # 80:20 split
 
 # Instantiate a tree model:
 using KoalaTrees

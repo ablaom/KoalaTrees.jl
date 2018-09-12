@@ -3,28 +3,21 @@ module KoalaTrees
 
 export TreeRegressor
 
-# development only:
-# import Koala: @dbg, @colon
-# export Node, is_stump, is_leaf, has_left, has_right, make_leftchild!, make_rightchild!
-# export is_left, is_right
-# export unite!, child
-
 # needed for this module:
-import Koala
-import Koala: Regressor, SupervisedMachine, softwarn, clean!
+import Koala: BaseType, Transformer, Regressor, SupervisedMachine, softwarn, clean!
 import Koala: params, keys_ordered_by_values
-import DataTableaux
-import DataTableaux:  DataTableau, FrameToTableauScheme, IntegerSet
-import StatsBase: sample
+import StatsBase: sample, countmap
 import DataFrames: AbstractDataFrame
 import UnicodePlots
-import KoalaTransforms
+import KoalaTransforms: ToIntTransformer, ToIntScheme, RegressionTargetTransformer
+using Statistics
 
 # to be extended:
-import Base: show, showall
+import Base: show, round, isempty, size, in, push!, Float64
 
-# to be extended (but not explicitly rexported):
-import Koala: default_transformer_X, default_transformer_y, fit, transform, inverse_transform
+# to be extended but not explicitly rexported:
+import Koala: default_transformer_X, default_transformer_y
+import Koala: fit, transform, inverse_transform
 import Koala: setup, predict
 
 # constants:
@@ -32,6 +25,10 @@ const Small = UInt8
 
 
 ## HELPERS:
+
+# include `IntegerSet` type and custom transformer
+# `FrameToTableauTransformer`:
+include("transformers.jl")
 
 """
 # `function mean_and_ss_after_add(mean, ss, n, x)`
@@ -49,7 +46,7 @@ function mean_and_ss_after_add(mean, ss, n, x)
 end
 
 """
-# `function mean_and_ss_after_omit(mean, ss, n, x)`
+    function mean_and_ss_after_omit(mean, ss, n, x)
 
 Given `n` numbers, their mean `mean` and sum-of-square deviations from
 the mean `ss`, this function returns the new mean and corresponding
@@ -100,7 +97,7 @@ function histogram(bag::AbstractVector{Int},
     end
     
     # create bins
-    bin = Vector{Vector{Int}}(nbins)
+    bin = Vector{Vector{Int}}(undef, nbins)
 
     # return unassigned bins if x takes constant value:
     if nbins == 1
@@ -200,7 +197,7 @@ end
 # Locating children
 
 """
-## `child(parent, gender)`
+    child(parent, gender)
 
 Returns the left child of `parent` of a `Node` object if `gender` is 1
 and right child if `gender is 2. If `gender` is `0` the routine throws
@@ -216,16 +213,16 @@ function child(parent, gender)
         return parent.right
     elseif gender == 0
         if parent.left != parent.right
-            throw(Base.error("Left and right children different."))
+            @error "Left and right children different."
         else
             return parent.left
         end
     end
-    throw(Base.error("Only genders 0, 1 or 2 allowed."))
+    @error "Only genders 0, 1 or 2 allowed."
 end
 
 """
-# `unite!(child, parent, gender)`
+    unite!(child, parent, gender)
 
 Makes `child` the `left` or `right` child of a `Node` object `parent`
 in case `gender` is `1` or `2` respectively; and makes `parent` the
@@ -272,7 +269,7 @@ function Base.show(stream::IO, node::Node)
     print(stream, "Node{$(typeof(node).parameters[1])}@$(tail(hash(node)))")
 end
 
-function Base.showall(stream::IO, node::Node)
+function Base.show(stream::IO, ::MIME"text/plain", node::Node)
     gap = spaces(node.depth + 1)
     println(stream, string(get_gender(node), gap, node.data))
     if has_left(node)
@@ -283,11 +280,6 @@ function Base.showall(stream::IO, node::Node)
     end
     return
 end
-
-showall(node::Node)=showall(STDOUT, node)
-
-# for testing purposes:
-# Node(data) = Node{typeof(data)}(data)
 
 function Node(data, parent::Node)
     child = Node(data)
@@ -302,9 +294,11 @@ function Node(parent::Node, data)
 end
 
 
-## `TreeRegressor` - regression decision tree with nearest neighbor regularization
+## REGRESSION DECISION TREE
+# With with nearest neighbor regularization, and penalty for
+# introducing new features in node splitting criteria.
 
-immutable NodeData
+struct NodeData
     feature::Int
     kind::Int8   # 0: root, 1: ordinal, 2: categorical, 3: leaf 
     r::Float64   # A *threshold*, *float repr. of integer subset*, or
@@ -321,7 +315,7 @@ function should_split_left(pattern, node::RegressorNode)
         small = round(Small, pattern[j])
         return small in round(IntegerSet, r)
     else
-        throw(Base.error("Expecting an ordinal or categorical node here."))
+        @error "Expecting an ordinal or categorical node here."
     end
 end
 
@@ -381,20 +375,10 @@ function feature_importance_curve(popularity_given_feature, names)
     return x, y
 end
 
-# transformer for learning algorithms requiring DataTableau inputs:
-struct TreeTransformer_X <: Koala.Transformer end
-fit(transformer::TreeTransformer_X, X::AbstractDataFrame, parallel, verbosity) =
-    FrameToTableauScheme(X)
-function transform(transformer::TreeTransformer_X, scheme, X) 
-    features = scheme.encoding.names
-    issubset(Set(features), Set(names(X))) ||
-        error("Attempting to transform DataFrame with incompatible feature labels.")
-    return DataTableaux.transform(scheme, X[features])
-end
-
-default_transformer_X(model::TreeRegressor) = TreeTransformer_X()
+# transformers:
+default_transformer_X(model::TreeRegressor) = DataFrameToTableauTransformer()
 default_transformer_y(model::TreeRegressor) =
-    KoalaTransforms.RegressionTargetTransformer(standardize=false)
+    RegressionTargetTransformer(standardize=false)
 
 
 #####################################################################
@@ -450,7 +434,7 @@ function split_on_categorical(rgs, j, bag, no_split_error, cache)
         vals2 = unique(Small[round(Small, cache.X.raw[i,j]) for i in bag])
         n_vals = length(vals2)
         if n_vals == 1
-            return 0.0, 0.0 # cache.X[j] is constant in this bag, so no gain
+            return 0.0, 0.0 # cache.X.raw[j] is constant in this bag, so no gain
         end
         n_select = rand(1:(n_vals - 1))
         left_selection = sample(vals2, n_select; replace=false)
@@ -492,7 +476,7 @@ function split_on_categorical(rgs, j, bag, no_split_error, cache)
     
     # Non-extreme case:
     
-    # 1. Determine a Vector{Small} of values taken by `cache.X[j]`,
+    # 1. Determine a Vector{Small} of values taken by `cache.raw.X[j]`,
     # called `values` and order it according to the mean values of
     # cache.y:
     
@@ -842,7 +826,7 @@ function attempt_split(rgs, bag, F, parent, gender, no_split_error, cache)
     for i in 1:max_features
         j = feature_sample_indices[i]
         
-        if cache.X.encoding.is_ordinal[j]
+        if cache.X.is_ordinal[j]
             gain, crit = split_on_ordinal(rgs, j, bag, no_split_error, cache)
         else
             gain, crit = split_on_categorical(rgs, j, bag, no_split_error, cache)
@@ -869,7 +853,7 @@ function attempt_split(rgs, bag, F, parent, gender, no_split_error, cache)
     # the optimal feature and unite with `parent`:
     j = feature_sample_indices[opt_index] # feature with minimum error
     
-    if cache.X.encoding.is_ordinal[j]
+    if cache.X.is_ordinal[j]
         data = NodeData(j, 1, opt_crit)
     else
         data = NodeData(j, 2, opt_crit)
@@ -994,7 +978,7 @@ function fit(rgs::TreeRegressor, cache, add, parallel, verbosity)
         end
     end
     report[:feature_importance_curve] =
-            feature_importance_curve(popularity_given_feature, cache.X.encoding.names)
+            feature_importance_curve(popularity_given_feature, cache.X.features)
     predictor = root.left
 
     return predictor, report, cache
@@ -1022,7 +1006,7 @@ function predict(rgs::TreeRegressor, predictor, X::DataTableau, parallel, verbos
         tree = predictor
         lambda = rgs.regularization
 
-        ret = Array{Float64}(size(X,1))
+        ret = Array{Float64}(undef, size(X,1))
         k = 1 # counter for index of `ret` (different from bag index)
         for i in 1:size(X,1)
 
