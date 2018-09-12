@@ -28,7 +28,7 @@ const Small = UInt8
 
 # include `IntegerSet` type and custom transformer
 # `FrameToTableauTransformer`:
-include("transformers.jl")
+include("transformer.jl")
 
 """
 # `function mean_and_ss_after_add(mean, ss, n, x)`
@@ -90,7 +90,7 @@ function histogram(bag::AbstractVector{Int},
                    log2_nbins)
     nbins = 2^log2_nbins
     nbins > 1 || throw(DomainError)
-    boundaries = linspace(minimum(x[bag]), maximum(x[bag]), nbins + 1) |> collect
+    boundaries = range(minimum(x[bag]), stop=maximum(x[bag]), length=nbins + 1) |> collect
 
     if boundaries[1] == boundaries[end]
         nbins = 1
@@ -376,7 +376,7 @@ function feature_importance_curve(popularity_given_feature, names)
 end
 
 # transformers:
-default_transformer_X(model::TreeRegressor) = DataFrameToTableauTransformer()
+default_transformer_X(model::TreeRegressor) = FrameToTableauTransformer()
 default_transformer_y(model::TreeRegressor) =
     RegressionTargetTransformer(standardize=false)
 

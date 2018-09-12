@@ -1,7 +1,7 @@
 using Koala
 using Revise
 using KoalaTrees
-using Base.Test
+using Test
 
 # test the contents of transformer.jl:
 const X, y = load_ames();
