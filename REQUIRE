@@ -1,7 +1,0 @@
-julia 0.6
-Koala 0.0.1
-DataTableaux
-DataFrames 0.11.7
-StatsBase 0.23.1
-UnicodePlots 0.2.6
-KoalaTransforms 0.1.1
