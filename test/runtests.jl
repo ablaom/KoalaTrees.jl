@@ -5,6 +5,10 @@ using KoalaTrees
     include("utilities.jl")
 end
 
+@testset "histogram" begin
+    include("histogram.jl")
+end
+
 
 # using Koala
 # # using Revise

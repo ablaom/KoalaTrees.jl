@@ -29,8 +29,8 @@ const Small = UInt8
 # include `IntegerSet` type and custom transformer
 # `FrameToTableauTransformer`:
 include("utilities.jl")
+include("histogram.jl")
 # include("transformer.jl")
-# include("histogram.jl")
 # include("nodes.jl")
 # include("regressor.jl")
 
