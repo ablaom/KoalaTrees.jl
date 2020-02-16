@@ -3,10 +3,13 @@ module KoalaTrees
 export TreeRegressor
 
 # needed for this module:
-# import Koala: BaseType, Transformer, Regressor, SupervisedMachine, softwarn, clean!
+# import Koala: BaseType, Transformer, Regressor,
+#    SupervisedMachine, softwarn, clean!
 # import Koala: params, keys_ordered_by_values
 # import DataFrames: AbstractDataFrame
-# import KoalaTransforms: ToIntTransformer, ToIntScheme, RegressionTargetTransformer
+# import KoalaTransforms: ToIntTransformer,
+#   ToIntScheme, RegressionTargetTransformer
+
 import StatsBase: sample, countmap
 using Statistics
 import UnicodePlots
