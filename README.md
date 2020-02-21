@@ -7,8 +7,6 @@ learning framework.
 [![Build Status](https://travis-ci.com/ablaom/KoalaTrees.jl.svg?branch=master)](https://travis-ci.com/ablaom/KoalaTrees.jl)
 [![Coverage Status](https://coveralls.io/repos/github/ablaom/KoalaTrees.jl/badge.svg?branch=master)](https://coveralls.io/github/ablaom/KoalaTrees.jl?branch=master)
 
-
-
 &#128679;
 
 
