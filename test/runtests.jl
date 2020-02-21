@@ -9,6 +9,10 @@ end
     include("histogram.jl")
 end
 
+@testset "nodes" begin
+    include("nodes.jl")
+end
+
 
 # using Koala
 # # using Revise

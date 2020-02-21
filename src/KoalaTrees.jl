@@ -13,6 +13,7 @@ export TreeRegressor
 import StatsBase: sample, countmap
 using Statistics
 import UnicodePlots
+import AbstractTrees
 
 # to be extended:
 import Base: show, round, isempty, size, in, push!, Float64, getindex
@@ -30,8 +31,8 @@ const Small = UInt8
 # `FrameToTableauTransformer`:
 include("utilities.jl")
 include("histogram.jl")
+include("nodes.jl")
 # include("transformer.jl")
-# include("nodes.jl")
 # include("regressor.jl")
 
 end # module
