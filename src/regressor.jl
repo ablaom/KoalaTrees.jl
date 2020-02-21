@@ -80,7 +80,7 @@ function feature_importance_curve(popularity_given_feature, names)
 end
 
 # transformers:
-default_transformer_X(model::TreeRegressor) = FrameToTableauTransformer()
+default_transformer_X(model::TreeRegressor) = TableToTableauTransformer()
 default_transformer_y(model::TreeRegressor) =
     RegressionTargetTransformer(standardize=false)
 

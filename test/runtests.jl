@@ -13,6 +13,10 @@ end
     include("nodes.jl")
 end
 
+@testset "small" begin
+    include("small.jl")
+end
+
 
 # using Koala
 # # using Revise
@@ -21,7 +25,7 @@ end
 
 # # test the contents of transformer.jl:
 # const X, y = load_ames();
-# t = KoalaTrees.FrameToTableauTransformer()
+# t = KoalaTrees.TableToTableauTransformer()
 # tM = Machine(t, X)
 # dt = transform(tM, X)
 # @test dt[1:2,:].raw == dt.raw[1:2,:] # test the getindex method needed

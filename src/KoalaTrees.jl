@@ -14,6 +14,8 @@ import StatsBase: sample, countmap
 using Statistics
 import UnicodePlots
 import AbstractTrees
+import MLJModelInterface
+import Base.==
 
 # to be extended:
 import Base: show, round, isempty, size, in, push!, Float64, getindex
@@ -28,10 +30,11 @@ const Small = UInt8
 
 
 # include `IntegerSet` type and custom transformer
-# `FrameToTableauTransformer`:
+# `TableToTableauTransformer`:
 include("utilities.jl")
 include("histogram.jl")
 include("nodes.jl")
+include("small.jl")
 # include("transformer.jl")
 # include("regressor.jl")
 
