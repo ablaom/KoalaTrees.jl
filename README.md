@@ -1,9 +1,14 @@
-
 # KoalaTrees ![logo](logo.png) 
 
 Decision tree machine learning algorithms for use with the
-[Koala](https://github.com/ablaom/Koala.jl) machine learning
-environment.
+[MLJ](https://github.com/alan-turing-institute/MLJ.jl) machine
+learning framework.
+
+[![Build Status](https://travis-ci.com/ablaom/KoalaTrees.jl.svg?branch=master)](https://travis-ci.com/ablaom/KoalaTrees.jl)
+[![Coverage Status](https://coveralls.io/repos/github/ablaom/KoalaTrees.jl/badge.svg?branch=master)](https://coveralls.io/github/ablaom/KoalaTrees.jl?branch=master)
+
+&#128679;
+
 
 ### Basic usage
 
