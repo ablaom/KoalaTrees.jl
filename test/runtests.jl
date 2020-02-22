@@ -17,6 +17,10 @@ end
     include("small.jl")
 end
 
+@testset "transformer" begin
+    include("transformer.jl")
+end
+
 
 # using Koala
 # # using Revise
@@ -29,17 +33,6 @@ end
 # tM = Machine(t, X)
 # dt = transform(tM, X)
 # @test dt[1:2,:].raw == dt.raw[1:2,:] # test the getindex method needed
-
-# # test the histogram maker:
-# @test KoalaTrees.histogram(21:41, 11:1000, 3)[1] == 
-# [[21, 22, 23],
-#  [24, 25],    
-#  [26, 27, 28],
-#  [29, 30],    
-#  [31, 32, 33],
-#  [34, 35],    
-#  [36, 37, 38],
-#  [39, 40, 41]]
 
 # # test clean
 # TreeRegressor(regularization=1.0)
@@ -72,7 +65,4 @@ end
 # rgs.bin_factor = 1
 # fit!(mach)
 # err(mach, test)
-# @test err(mach, test) < 5e4  
-
-
-
+# @test err(mach, test) < 5e4

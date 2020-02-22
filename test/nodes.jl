@@ -55,3 +55,5 @@ r112 = Node(r11.left, "r112")
 
 AbstractTrees.print_tree(root)
 root # same thing
+
+true

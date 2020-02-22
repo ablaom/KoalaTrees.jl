@@ -16,6 +16,8 @@ import UnicodePlots
 import AbstractTrees
 import MLJModelInterface
 import Base.==
+import Tables
+using ScientificTypes
 
 # to be extended:
 import Base: show, round, isempty, size, in, push!, Float64, getindex
@@ -35,7 +37,7 @@ include("utilities.jl")
 include("histogram.jl")
 include("nodes.jl")
 include("small.jl")
-# include("transformer.jl")
+include("transformer.jl")
 # include("regressor.jl")
 
 end # module
