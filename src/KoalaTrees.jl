@@ -12,7 +12,7 @@ export TreeRegressor
 
 import StatsBase: sample, countmap
 using Statistics
-import UnicodePlots
+# import UnicodePlots
 import AbstractTrees
 import MLJModelInterface
 import Base.==
