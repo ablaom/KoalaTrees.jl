@@ -38,6 +38,8 @@ include("histogram.jl")
 include("nodes.jl")
 include("small.jl")
 include("transformer.jl")
+include("benchmarking.jl")
+
 # include("regressor.jl")
 
 end # module
