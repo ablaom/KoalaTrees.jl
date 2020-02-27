@@ -587,7 +587,7 @@ end # of function `attempt_split`
 
 """
 Recursive function to grow the decision tree. Has no return value
-but generally alters 2nd and 3rd arguments.
+but generally alters 2nd and 3rd arguments. 
 
 """
 function grow(rgs,
@@ -641,6 +641,9 @@ function grow(rgs,
         # println("Leaf born, n_samples = $n_patterns, target prediction = $target_mean")
         return nothing
     end
+
+    # THIS LOOKS WRONG. don't we need to create and connect baby as
+    # parent has itself as children at the moment??
 
     # Otherwise continue growing branches left and right:
     baby = child(parent, gender)

@@ -1,204 +1,240 @@
-## `Node` type - data structure for building binary trees
+const U = UInt
+using AbstractTrees
 
-# Binary trees are identified with their top (stump) nodes, so only a
-# `Node` type, with the appropriate possiblities for connection, is
-# defined. Connections are established with the methods
-# `make_leftchild!` and `make_rightchild!`. Nodes have a `depth`
-# field; when a new connection is made, the child's depth is declared
-# to be one more than the parent. When a node `N` is created it is
-# initially its own parent (equivalently, `is_stump(N) = true`) and is
-# its own left and right child; its depth is initially zero.
+# Nodes with both parent and children fields cannot be immutable
+# because they cannot be instantiated simulaneously. We construct a
+# tree with "prenodes" instead.  A prenode represents a node of some
+# tree but the children are defined only implicitly by the prenode
+# `gender` and `parent` fields.
 
-"""
+# When all prenodes are defined, a collection of immutable objects of
+# type `Node` are constructed. These nodes admit `left`, `right` and
+# `parent` *methods*.
 
-    Node{T}
 
-Node type for building binary trees with nodes labelled with data of
-type `T`. A `Node` instance has fields `parent`, `left`, `right`,
-`data` and `depth`.
+## PRENODES
 
-    Node(data)
-
-Construct a node labelled with `data`. It has itself as children and
-its `depth` is `0`.
-
-Nodes are connected using `make_leftchild!(child, parent)` or
-`make_rightchild(child, parent)`, which reset the children's depth to
-one more than the parent.
-
-See also [`unite!`](@ref), [`child](@ref), [`is_stump`](@ref),
-[`is_left`](@ref), [`is_right`](@ref), [`has_left`](@ref),
-[`has_right`](@ref), [`is_leaf`](@ref).
-
-"""
-mutable struct Node{T}
-    parent::Node{T}
-    left::Node{T}
-    right::Node{T}
+struct Prenode{T} <: MLJModelInterface.MLJType
     data::T
-    depth::Int
-    function Node{T}(datum) where T
-        node = new{T}()
-        node.parent = node
-        node.left = node
-        node.right = node
-        node.data = datum
-        node.depth = 0
-        return node
-    end
+    gender::Bool
+    parent::Union{Prenode{T},Prenode{T}}
+    Prenode(data::T, gender, parent) where T = new{T}(data, gender, parent)
+    Prenode(data::T) where T = new{T}(data)
 end
 
-Node(data::T) where T = Node{T}(data)
+""" 
 
+    create_stump(data)
 
-# Testing connectivity:
+Create a stump prenode for a binary tree labelled with specified `data`.
 
-is_stump(node) = node.parent == node
-is_left(node) =  (node.parent != node) && (node.parent.left == node)
-is_right(node) = (node.parent != node) && (node.parent.right == node)
-has_left(node) =  (node.left  != node)
-has_right(node) = (node.right != node)
-is_leaf(node) = node.left == node && node.right == node
-
-
-# Connecting nodes:
+See also [`node`](@ref)
 
 """
-    `make_leftchild!(child, parent)` 
-
-Make `child` the left child of `parent` and return the depth of
-`child`.
+create_stump(data) = Prenode(data)
 
 """
-function make_leftchild!(child, parent)
-    parent.left = child
-    child.parent = parent
-    child.depth = parent.depth + 1
-end
+    create_left(data, parent)
+
+Create a prenode for a binary tree that is the left child of the
+specified `parent` prenode, labelling it with the specified `data`.
+
+See also [`node`](@ref)
 
 """
-    `make_rightchild!(child, parent)` 
-
-Make `child` the right child of `parent` and return the depth of
-`child`
+create_left(data, parent::Prenode) = Prenode(data, false, parent)
 
 """
-function make_rightchild!(child, parent)
-    parent.right = child
-    child.parent = parent
-    child.depth = parent.depth + 1
-end
+    create_left(data, parent)
 
-# Shortcut constructors:
+Create a prenode for a binary tree that is the left child of the
+specified `parent` prenode, labelling it with the specified `data`.
 
-function Node(data, parent::Node)
-    child = Node(data)
-    make_leftchild!(child, parent)
-    return child
-end
-function Node(parent::Node, data)
-    child = Node(data)
-    make_rightchild!(child, parent)
-    return child
-end
-
-# Locating children
+See also [`node`](@ref)
 
 """
-    child(parent, gender)
+create_right(data, parent::Prenode) = Prenode(data, true, parent)
 
-Return the `left` child of `parent` of a `Node` object if `gender` is 1
-and `right` child if `gender is 2. If `gender` is `0` the routine throws
-an error if the left and right children are different and otherwise
-returns their common value.  For all other values of gender an error
-is thrown.
+is_stump(prenode) = !isdefined(prenode, :parent)
+is_left(prenode::Prenode) = !is_stump(prenode) && !prenode.gender
+is_right(prenode::Prenode) = !is_stump(prenode) && prenode.gender
 
-"""
-function child(parent, gender)
-    if gender == 1
-        return parent.left
-    elseif gender == 2
-        return parent.right
-    elseif gender == 0
-        if parent.left != parent.right
-            error("Left and right children different. ")
-        else
-            return parent.left
-        end
-    end
-    error("Only genders 0, 1 or 2 allowed. ")
-end
-
-"""
-    unite!(child, parent, gender)
-
-Make `child` the `left` or `right` child of a `Node` object's `parent`
-in case `gender` is `1` or `2` respectively; or make `parent` the
-parent of `child`. For any other values of `gender` the routine makes
-`child` simultaneously the left and right child of `parent`, and
-`parent` the parent of `child`. Returns `nothing`.
-
-"""
-function unite!(child, parent, gender)
-    if gender == 1
-        make_leftchild!(child, parent)
-    elseif gender == 2
-        make_rightchild!(child, parent)
+function Base.show(stream::IO, ::MIME"text/plain", prenode::Prenode)
+    if isdefined(prenode, :parent)
+        print(stream,
+              "data: $(prenode.data)\n",
+              "gender: $(prenode.gender)\n",
+              "parent data: $(prenode.parent.data)")
     else
-        make_leftchild!(child, parent)
-        make_rightchild!(child, parent)
+        print(stream,
+              "data: $(prenode.data)\n",
+              "gender: $(prenode.gender)\n",
+              "parent: #undef")
     end
 end
 
-# Implement AbstractTrees.jl interface:
 
-const AT = AbstractTrees
+## TREES
 
-function AT.children(node::Node)
-    if has_left(node)
-        if has_right(node)
-            return (node.left, node.right)
+"""
+    Tree{T,N}
+
+An immutable struct for explicitly encoding the binary tree defined
+*implicitly* by `N` instances of `Prenode{T}`.
+
+"""
+struct Tree{T,N} <: MLJModelInterface.MLJType
+    stump::U
+    prenodes::NTuple{N,Prenode{T}}
+    lefts::NTuple{N,U}
+    rights::NTuple{N,U}
+    parents::NTuple{N,U}
+end
+
+"""
+    Tree(prenodes)
+
+Construct a `Tree` instance from a vector of identically typed
+`Prenode` instances. 
+
+"""
+function Tree(prenodes::AbstractVector{Prenode{T}}) where T
+
+    N = length(prenodes)
+
+    _left = Dict{Prenode{T},U}()
+    _right = Dict{Prenode{T},U}()
+    _parents = Dict{Prenode{T},U}()
+    j = zero(U)
+    stump = 0
+    for n in prenodes
+        j  += 1
+        if isdefined(n, :parent)
+            if n.gender
+                _right[n.parent] = j
+            else
+                _left[n.parent] = j
+            end
+        else
+            stump == 0 ||
+                error("More than one stump encountered. ")
+           stump = j
         end
-        return (node.left,)
     end
-    has_right(node) && return (node.right,)
+
+    stump == 0 &&
+        error("Cannot construct a tree from prenodes without stump. ")
+
+    internal_prenodes = keys(_left) # excludes leaves
+
+    lefts = Vector{U}(undef, N)
+    rights = Vector{U}(undef, N)
+    parents = Vector{U}(undef, N)
+
+    j = zero(U)
+    for n in prenodes
+        j += 1
+        if j == stump
+            parents[j] = 0
+        end
+        if n in internal_prenodes
+            parents[_left[n]] = j
+            parents[_right[n]] = j
+            lefts[j] = _left[n]
+            rights[j] = _right[n]
+        else
+            lefts[j] = 0
+            rights[j] = 0
+        end
+    end
+
+    return Tree(stump,
+                Tuple(prenodes),
+                Tuple(lefts),
+                Tuple(rights),
+                Tuple(parents))
+
+end
+
+Base.length(::Tree{N} where N) = N
+
+Base.parent(j, tree::Tree) = tree.parents[U(j)]
+left(j, tree::Tree) = tree.lefts[U(j)]
+right(j, tree::Tree) = tree.rights[U(j)]
+data(j, tree::Tree) = tree.prenodes[j].data
+stump(tree::Tree) = tree.stump
+
+
+## NODE
+
+"""
+    Node{T,N}
+
+Type for representing nodes in a binary tree constructed using `N`
+prenodes.
+
+A node representing a stump prenode is its own parent. A node
+representing a prenode without children has itself as both children.
+
+See also [`node`](@ref)
+
+"""
+struct Node{T,N} <: MLJModelInterface.MLJType
+    id::U
+    tree:: Tree{T,N}
+end
+
+"""
+
+   node(prenodes)
+
+Return the stump `Node` object associated with the binary tree
+constructed using the vector of identically typed `prenodes`.
+
+See also [`create_stump`](@ref), [`create_left`](@ref),
+[`create_right`](@ref).
+
+"""
+function node(prenodes)
+    tree = Tree(prenodes)
+    return Node(stump(tree), tree)
+end
+
+prenode(n::Node) = n.tree.prenodes[n.id]
+
+function Base.parent(n::Node)
+    tree = n.tree
+    p = parent(n.id, tree)
+    p == 0 && return n
+    return Node(p, tree)
+end
+
+left(n::Node) = Node(left(n.id, n.tree), n.tree)
+right(n::Node) = Node(right(n.id, n.tree), n.tree)
+
+has_left(n::Node) = left(n).id != 0
+has_right(n::Node) = right(n).id != 0
+is_stump(n::Node) = parent(n) == 0
+
+data(n::Node) = prenode(n).data
+
+# implement AbstractTrees.jl interface:
+const AT = AbstractTrees
+function AT.children(n::Node)
+    if has_left(n)
+        if has_right(n)
+            return (left(n), right(n))
+        end
+        return (left(n),)
+    end
+    has_right(n) && return (right(n),)
     return ()
 end
+AT.printnode(io::IO, n::Node) = print(io, data(n))
 
-has_sibling(node::Node) =
-    (is_left(node) && has_right(node.parent)) ||
-    (is_right(node) && has_left(node.parent))
-
-function AT.printnode(io::IO, node::Node)
-    print(io, node.data)
-    if !has_sibling(node)
-        if is_left(node)
-            print(io, " (left)")
-        elseif is_right(node)
-            print(io, " (right)")
-        end
-    end
-end
-
-Base.eltype(::Type{<:AT.TreeIterator{Node{T}}}) where T = Node{T}
-Base.IteratorEltype(::Type{<:AT.TreeIterator{Node{T}}}) where T =
+Base.eltype(::Type{<:AT.TreeIterator{S}}) where {T,N,S<:Node{T,N}} = Node{T,N}
+Base.IteratorEltype(::Type{<:AT.TreeIterator{S}}) where {T,N,S<:Node{T,N}} =
     Base.HasEltype()
 
-# Display functionality:
-
-function spaces(n)
-    s = ""
-    for i in 1:n
-        s = string(s, " ")
-    end
-    return s
-end
-
-tail(n) = "..."*string(n)[end-3:end]
-
-function Base.show(stream::IO, node::Node)
-    print(stream, "Node{$(typeof(node).parameters[1])}@$(tail(hash(node)))")
-end
-
-Base.show(stream::IO, ::MIME"text/plain", node::Node) = AT.print_tree(node)
-
+Base.show(stream::IO, ::MIME"text/plain", node::Node) =
+    AT.print_tree(node)
